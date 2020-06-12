@@ -16,7 +16,7 @@ data:
 results:
   checkpoints:
     root: checkpoints
-    tag: model
+    tag: tensorboard
     name: model
 
 train:
@@ -25,5 +25,12 @@ train:
   num_workers: 2
 
 model:
-  name: resnet18
-  pretrained: False
+  arch: resnet18
+  pretrained: false
+
+optimizer:
+  name: SGD
+  parameters:  # passed as **kwargs
+    lr: 1e-3
+    momentum: 0.9
+    weight_decay: 1e-8

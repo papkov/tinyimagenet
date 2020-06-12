@@ -1,6 +1,7 @@
 import os
 import sys
 from pathlib import Path
+import types
 
 import logging
 import hydra
@@ -144,13 +145,41 @@ def main(cfg: DictConfig):
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     log.info(f'Using device={device}')
 
-    # Set model end optimization
-    model = models.resnet18()
-    model.fc = nn.Linear(512, cfg.data.classes)
+    # Set model
+    # TODO: only resnets supported here, because of `fc` layer
+    available_models = [k for k, v in models.__dict__.items()
+                        if isinstance(v, types.FunctionType) and 'resnet' in k]
+    try:
+        model = eval(f"models.{cfg.model.arch}")()
+    except AttributeError as e:
+        log.error(f"Architecture {cfg.model.arch} not supported. "
+                  f"Select one of the following: {','.join(available_models)}")
+        log.error(e)
+        return
+    log.info(f"Created model {cfg.model.arch}")
+
+    model.fc = nn.Linear(model.fc.in_features, cfg.data.classes)
     model = model.to(device)
 
-    optimizer = optim.SGD(model.parameters(), lr=1e-3)
+    # Set optimizer
+    available_optimizers = [k for k, v in torch.optim.__dict__.items() if callable(v)]
+    try:
+        optimizer = eval(f"optim.{cfg.optimizer.name}")(model.parameters(), **cfg.optimizer.parameters)
+    except AttributeError as e:
+        log.error(f"Optimizer {cfg.optimizer.name} not supported. "
+                  f"Select one of the following: {', '.join(available_optimizers)}")
+        log.error(e)
+        return
+    except TypeError as e:
+        optional_parameters = eval(f"optim.{cfg.optimizer.name}").__init__.__code__.co_varnames[2:]
+        log.error(f"Some optimizer parameters are wrong. "
+                  f"Consider the following: {', '.join(optional_parameters)}")
+        log.error(e)
+        return
+    set_parameters = ", ".join([f"{k}={v}" for k, v in cfg.optimizer.parameters.items()])
+    log.info(f"Created optimizer {cfg.optimizer.name}({set_parameters})")
 
+    # Set loss function
     loss_function = loss.CrossEntropyLoss()
 
     # Training loop
@@ -159,9 +188,11 @@ def main(cfg: DictConfig):
         try:
             train(model, device, train_loader, optimizer, loss_function, epoch, writer, log)
             test(model, device, test_loader, loss_function, epoch, writer, log)
-            writer.close()
         except KeyboardInterrupt:
             log.info('Training interrupted')
+            writer.close()
+            break
+        writer.close()
 
 
 if __name__ == '__main__':
