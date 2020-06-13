@@ -31,6 +31,11 @@ model:
 optimizer:
   name: SGD
   parameters:  # passed as **kwargs
-    lr: 1e-3
+    lr: 0.1
     momentum: 0.9
     weight_decay: 1e-8
+
+scheduler:
+  name: CosineAnnealingLR
+  parameters:  # passed as **kwargs
+    T_max: 1955  # default train loader has 391 steps

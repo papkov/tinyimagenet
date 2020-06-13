@@ -9,3 +9,4 @@ torch==1.5.0
 torchvision==0.6.0
 tqdm==4.46.1
 hydra-core==0.11.3
+flake8==3.8.3
