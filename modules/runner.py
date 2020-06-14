@@ -12,6 +12,7 @@ from typing import Callable, List, Optional, Sequence, Union
 from torch.utils.tensorboard import SummaryWriter
 import os
 from pathlib import Path
+import numpy as np
 
 
 def torch_model(arch, n_classes, pretrained, log):
@@ -75,31 +76,38 @@ def torch_scheduler(name, optimizer, log, **kwargs):
 def train(model, device, train_loader, optimizer, loss_function, epoch, writer, log, scheduler=None):
     model.train()
     model.to(device)
-    correct = 0
+    meter_loss = Meter('loss')
+    meter_corr = Meter('acc')
 
-    for batch_idx, batch_data in enumerate(tqdm(train_loader)):
+    tqdm_loader = tqdm(train_loader, desc='train')
+    for batch_idx, batch_data in enumerate(tqdm_loader):
         data, target = batch_data.images.to(device), batch_data.labels.to(device)
         optimizer.zero_grad()
+
         output = model(data)
+
         loss = loss_function(output, target)
         loss.backward()
         optimizer.step()
-        pred = output.argmax(dim=1, keepdim=True)
-        correct += pred.eq(target.view_as(pred)).sum().item()
         if scheduler is not None:
             scheduler.step()
 
+        pred = output.argmax(dim=1, keepdim=True)
+        # Display training status
+        meter_loss.add(loss.item())
+        meter_corr.add(pred.eq(target.view_as(pred)).sum().item())
+        tqdm_loader.set_postfix({'loss': meter_loss.avg,
+                                 'acc': 100 * meter_corr.avg / len(batch_data.images)})
+
+    # Log in file and tensorboard
+    acc = 100.0 * meter_corr.sum / len(train_loader.dataset)
     log.info(
-        "Train Epoch: {} [ ({:.0f}%)]\tLoss: {:.6f}".format(
-            epoch, 100.0 * correct / len(train_loader.dataset), loss.item()
-        )
+        "Train Epoch: {} [ ({:.0f}%)]\tLoss: {:.6f}".format(epoch, acc, loss.item())
     )
-    writer.add_scalar("train_loss_plot", loss.item(), global_step=epoch)
-    writer.add_scalar(
-        "train_accuracy_plot",
-        100.0 * correct / len(train_loader.dataset),
-        global_step=epoch,
-    )
+    writer.add_scalar("train_loss", loss.item(), global_step=epoch)
+    writer.add_scalar("train_accuracy", acc, global_step=epoch)
+
+    return meter_loss.avg, acc
 
 
 def test(model, device, test_loader, loss_function, epoch, writer, log):
@@ -108,7 +116,7 @@ def test(model, device, test_loader, loss_function, epoch, writer, log):
     test_loss = 0
     correct = 0
     with torch.no_grad():
-        for idx, batch_data in enumerate(tqdm(test_loader)):
+        for idx, batch_data in enumerate(tqdm(test_loader, desc='valid')):
             data, target = batch_data.images.to(device), batch_data.labels.to(device)
             output = model(data)
             test_loss += loss_function(output, target).sum().item()
@@ -125,25 +133,66 @@ def test(model, device, test_loader, loss_function, epoch, writer, log):
             100.0 * correct / len(test_loader.dataset),
         )
     )
-    writer.add_scalar("test_loss_plot", test_loss, global_step=epoch)
+    writer.add_scalar("test_loss", test_loss, global_step=epoch)
     writer.add_scalar(
         "test_accuracy_plot",
         100.0 * correct / len(test_loader.dataset),
         global_step=epoch,
     )
 
+    return test_loss, 100.0 * correct / len(test_loader.dataset)
+
 
 @dataclass()
+class Meter:
+    name: str
+    history: List
+    sum: float = 0
+    avg: float = 0
+    last: float = 0
+    min: float = np.inf
+    max: float = -np.inf
+    extremum: str = ''
+    monitor_min: bool = False
+
+    """Stores all the incremented elements, their sum and average"""
+    def __init__(self, name):
+        self.name = name
+        self.monitor_min = name.endswith('loss')
+        self.reset()
+
+    def reset(self):
+        self.history = []
+        self.sum = 0
+        self.avg = 0
+        self.last = 0
+        self.min = np.inf
+        self.max = -np.inf
+        self.extremum = ''
+
+    def add(self, value):
+        self.last = value
+        self.extremum = ''
+
+        if value < self.min:
+            self.min = value
+            self.extremum = 'min'
+        if value > self.max:
+            self.max = value
+            self.extremum = 'max'
+
+        self.history.append(value)
+        self.sum += value
+        self.avg = self.sum / len(self.history)
+
+    def is_best(self):
+        """Check if the last epoch was the best according to the meter"""
+        is_best = (self.monitor_min and self.extremum == 'min') or \
+                  (not self.monitor_min and self.extremum == 'max')
+        return is_best
+
+
 class Runner:
-    cfg: DictConfig
-    log: Logger
-    train_loader: DataLoader
-    test_loader: DataLoader
-    model: torch.nn.Module
-    optimizer: torch.optim.Optimizer
-    scheduler: Union[torch.optim.lr_scheduler._LRScheduler, None]
-    loss_function: torch.nn.Module
-    device: torch.device
 
     def __init__(self, cfg: DictConfig, log: Logger, train_loader: DataLoader, test_loader: DataLoader):
         self.log = log
@@ -175,16 +224,35 @@ class Runner:
         self.loss_function = loss.CrossEntropyLoss()
 
     def fit(self):
+        # Paths
+        results_root = Path(os.getcwd())
+        checkpoint_path = results_root / self.cfg.results.checkpoints.root
+        checkpoint_path /= f"{self.cfg.results.checkpoints.name}.pth"
+        # Meters
+        meters = ['train_loss', 'val_loss', 'train_acc', 'val_acc']
+        meters = {m: Meter(m) for m in meters}
+        writer = SummaryWriter(results_root / self.cfg.results.checkpoints.tag)
         # Training loop
         for epoch in range(self.cfg.train.epochs):
-            writer = SummaryWriter(Path(os.getcwd()) / self.cfg.results.checkpoints.tag)
             try:
-                train(self.model, self.device, self.train_loader, self.optimizer, self.loss_function, epoch,
-                      writer, self.log, self.scheduler)
-                test(self.model, self.device, self.test_loader, self.loss_function, epoch, writer, self.log)
+                train_loss, train_acc = train(self.model, self.device, self.train_loader,
+                                              self.optimizer, self.loss_function, epoch,
+                                              writer, self.log, self.scheduler)
+                val_loss, val_acc = test(self.model, self.device, self.test_loader,
+                                         self.loss_function, epoch, writer, self.log)
+                # Meters
+                meters['train_loss'].add(train_loss)
+                meters['val_loss'].add(val_loss)
+                meters['train_acc'].add(train_acc)
+                meters['val_acc'].add(val_acc)
+
+                # Checkpoint
+                if meters[self.cfg.train.monitor].is_best:
+                    self.log.info(f'Save the best model to {checkpoint_path}')
+                    torch.save(self.model.state_dict(), checkpoint_path)
+
             except KeyboardInterrupt:
                 self.log.info('Training interrupted')
-                writer.close()
                 break
-            writer.close()
+        writer.close()
 

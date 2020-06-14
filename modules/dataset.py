@@ -13,12 +13,13 @@ from torch.utils.data.dataset import Dataset
 from torchvision import transforms
 
 from omegaconf import DictConfig
+import hydra
 
 Transform = Callable[[Image.Image], Image.Image]
 
 
 def get_labels_mapping(cfg):
-    data_root = Path(cfg.data.root)
+    data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
     all_folders = [
         dir_name
         for r, d, f in os.walk(data_root / cfg.data.train)

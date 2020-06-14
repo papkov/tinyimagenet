@@ -1,11 +1,10 @@
 hydra:
   run:
-    dir: ./results/${now:%Y-%m-%d}/${now:%H-%M-%S}
-#    dir: /project/results/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: results/${model.arch}/${now:%Y-%m-%d_%H-%M-%S}
 
 data:
   name: tinyimagenet
-  root: /project/data/tiny-imagenet-200
+  root: data/tiny-imagenet-200
   train: train
   val: val
   test: test
@@ -23,6 +22,7 @@ train:
   epochs: 2
   batch_size: 256
   num_workers: 2
+  monitor: val_acc
 
 model:
   arch: resnet18

@@ -25,24 +25,23 @@ def main(cfg: DictConfig):
 
     # Data
     # Specify data paths from config
-    data_root = Path(cfg.data.root)
+    data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
     train_path = data_root / cfg.data.train
     val_path = data_root / cfg.data.val
 
     # Check if dataset is available
     log.info(f'Looking for dataset in {str(data_root)}')
     if not data_root.exists():
-        log.error("Dataset not found. Terminating."
-                  "See README.md for downloading details.")
+        log.error("Folder not found. Terminating. "
+                  "See README.md for data downloading details.")
         return
 
     # Specify results paths from config
     results_root = Path(os.getcwd())  # hydra handles results folder
     checkpoint_path = results_root / cfg.results.checkpoints.root
-    checkpoint_name = f"{cfg.results.checkpoints.name}.pth"
-    # And make respective dirs if necessary
     checkpoint_path.mkdir(parents=True, exist_ok=True)
-    log.info(f"Write checkpoints to {checkpoint_path}/{checkpoint_name}")
+    checkpoint_path /= f"{cfg.results.checkpoints.name}.pth"
+    log.info(f"Write checkpoints to {str(checkpoint_path)}")
 
     # Training
     # Dataset
