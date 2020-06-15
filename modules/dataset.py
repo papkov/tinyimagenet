@@ -6,6 +6,7 @@ from typing import Callable, List, Optional, Sequence, Union
 import pandas as pd
 from pandas import DataFrame
 from PIL import Image
+import numpy as np
 
 import torch
 from torch.utils.data.dataloader import default_collate
@@ -19,7 +20,11 @@ Transform = Callable[[Image.Image], Image.Image]
 
 
 def get_labels_mapping(cfg):
-    data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
+    try:
+        data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
+    except AttributeError:
+        # Handle standalone run
+        data_root = Path(cfg.data.root)
     all_folders = [
         dir_name
         for r, d, f in os.walk(data_root / cfg.data.train)
@@ -91,9 +96,9 @@ class TinyImagenetDataset(Dataset):
 
     def __getitem__(self, index: int) -> DatasetItem:
         path, label = self._df.loc[index, :]
-        image = Image.open(path).convert("RGB")
+        image = np.array(Image.open(path).convert("RGB"))
         if self._transform:
-            image = self._transform(image)
+            image = self._transform(image=image)['image']
         return DatasetItem(image=image, label=label, id=index, path=path)
 
     def __len__(self) -> int:

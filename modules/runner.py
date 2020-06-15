@@ -135,7 +135,7 @@ def test(model, device, test_loader, loss_function, epoch, writer, log):
     )
     writer.add_scalar("test_loss", test_loss, global_step=epoch)
     writer.add_scalar(
-        "test_accuracy_plot",
+        "test_accuracy",
         100.0 * correct / len(test_loader.dataset),
         global_step=epoch,
     )

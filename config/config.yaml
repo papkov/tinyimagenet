@@ -2,15 +2,11 @@ hydra:
   run:
     dir: results/${model.arch}/${now:%Y-%m-%d_%H-%M-%S}
 
-data:
-  name: tinyimagenet
-  root: data/tiny-imagenet-200
-  train: train
-  val: val
-  test: test
-  train_labels: words.txt
-  val_labels: val_annotations.txt
-  classes: 200
+defaults:
+  - data: tinyimagenet
+
+augmentation:
+  root: config/augmentation/default.yaml
 
 results:
   checkpoints:

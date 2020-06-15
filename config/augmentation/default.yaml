@@ -1,0 +1,42 @@
+__version__: 0.4.5
+transform:
+  __class_fullname__: albumentations.core.composition.Compose
+  additional_targets: {}
+  bbox_params: null
+  keypoint_params: null
+  p: 1.0
+  transforms:
+  - __class_fullname__: albumentations.augmentations.transforms.RandomRotate90
+    always_apply: false
+    p: 0.5
+  - __class_fullname__: albumentations.augmentations.transforms.HorizontalFlip
+    always_apply: false
+    p: 0.5
+  - __class_fullname__: albumentations.augmentations.transforms.Transpose
+    always_apply: false
+    p: 0.5
+  - __class_fullname__: albumentations.augmentations.transforms.RandomScale
+    always_apply: false
+    interpolation: 1
+    p: 0.5
+    scale_limit:
+    - 0.8999999999999999
+    - 1.08
+  - __class_fullname__: albumentations.augmentations.transforms.RandomCrop
+    always_apply: false
+    height: 56
+    p: 1.0
+    width: 56
+  - __class_fullname__: albumentations.augmentations.transforms.RandomGamma
+    always_apply: false
+    eps: null
+    gamma_limit:
+    - 80
+    - 120
+    p: 0.5
+  - __class_fullname__: albumentations.augmentations.transforms.RandomContrast
+    always_apply: false
+    limit:
+    - -0.2
+    - 0.2
+    p: 0.5

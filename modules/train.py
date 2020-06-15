@@ -11,6 +11,9 @@ from torchvision import transforms
 from dataset import TinyImagenetDataset, DatasetItem
 from runner import Runner
 
+import albumentations as albu
+from albumentations import pytorch as albu_pytorch
+
 
 @hydra.main(config_path="../config/config.yaml")
 def main(cfg: DictConfig):
@@ -21,7 +24,7 @@ def main(cfg: DictConfig):
     """
     # Setup logging and show config (hydra takes care of naming)
     log = logging.getLogger(__name__)
-    log.info(f'Config:\n{cfg.pretty()}')
+    log.debug(f'Config:\n{cfg.pretty()}')
 
     # Data
     # Specify data paths from config
@@ -44,15 +47,26 @@ def main(cfg: DictConfig):
     log.info(f"Write checkpoints to {str(checkpoint_path)}")
 
     # Training
-    # Dataset
-    transform = transforms.Compose(
+    # Augmentations
+    base_transform = albu.Compose(
         [
-            transforms.ToTensor(),
-            transforms.Normalize([0.4802, 0.4481, 0.3975],
-                                 [0.2302, 0.2265, 0.2262]),
+            albu.Normalize([0.4802, 0.4481, 0.3975],
+                           [0.2302, 0.2265, 0.2262]),
+            albu_pytorch.ToTensorV2()
         ]
     )
+    if 'augmentation' in cfg:
+        albu_transform = albu.load(
+            hydra.utils.to_absolute_path(cfg.augmentation.root), data_format='yaml'
+        )
+        log.info(f"Loaded transforms from to {str(cfg.augmentation.root)}")
+        log.debug(albu_transform)
+        transform = albu.Compose([albu_transform, base_transform])
+    else:
+        log.info("Augmentations will not be applied")
+        transform = base_transform
 
+    # Dataset
     train_dataset = TinyImagenetDataset(train_path, cfg, transform)
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
@@ -64,7 +78,7 @@ def main(cfg: DictConfig):
     log.info(f"Created training dataset ({len(train_dataset)}) "
              f"and loader ({len(train_loader)})")
 
-    test_dataset = TinyImagenetDataset(val_path, cfg, transform)
+    test_dataset = TinyImagenetDataset(val_path, cfg, base_transform)
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=cfg.train.batch_size,
