@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchvision import models
+import torchvision
 from torch.nn.modules import loss
 import types
 from tqdm.auto import tqdm
@@ -13,23 +13,29 @@ from torch.utils.tensorboard import SummaryWriter
 import os
 from pathlib import Path
 import numpy as np
+from functools import reduce
+import models
 
 
-def torch_model(arch, n_classes, pretrained, log):
-    # TODO: only resnets supported here, because of `fc` layer
-    available = [k for k, v in models.__dict__.items()
+def torch_model(arch, n_classes, pretrained, log, module_name='torchvision'):
+    # Get module with models
+    module = torchvision.models if module_name == 'torchvision' else models
+    # Get list of available architectures
+    # TODO: only resnets supported here now, because of `fc` layer
+    available = [k for k, v in module.__dict__.items()
                  if isinstance(v, types.FunctionType) and 'resnet' in k]
     try:
-        model = getattr(models, arch)(pretrained=pretrained)
+        if module_name == 'torchvision':
+            model = getattr(module, arch)(pretrained=pretrained)
+            model.fc = nn.Linear(model.fc.in_features, n_classes)
+        else:
+            model = getattr(module, arch)(n_classes=n_classes)
     except AttributeError as e:
         log.error(f"Architecture {arch} not supported. "
                   f"Select one of the following: {','.join(available)}")
         log.error(e)
         raise
-    log.info(f"Created model {arch}")
-    # Substitute the final FC layer
-    model.fc = nn.Linear(model.fc.in_features, n_classes)
-    log.info(f"Created model {arch}(pretrained={str(pretrained)}) with {n_classes} outputs")
+    log.info(f"Created model {module_name}.{arch}(pretrained={str(pretrained)}) with {n_classes} outputs")
     return model
 
 
@@ -205,7 +211,8 @@ class Runner:
         self.log.info(f'Using device={self.device}')
 
         # Set model
-        self.model = torch_model(self.cfg.model.arch, self.cfg.data.classes, self.cfg.model.pretrained, log)
+        self.model = torch_model(self.cfg.model.arch, self.cfg.data.classes, self.cfg.model.pretrained,
+                                 log, module_name=self.cfg.model.module)
         self.model = self.model.to(self.device)
 
         # Set optimizer

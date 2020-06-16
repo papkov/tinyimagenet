@@ -1,6 +1,6 @@
 hydra:
   run:
-    dir: results/${model.arch}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: results/${model.module}.${model.arch}/${now:%Y-%m-%d_%H-%M-%S}
 
 defaults:
   - data: tinyimagenet
@@ -22,6 +22,7 @@ train:
 
 model:
   arch: resnet18
+  module: torchvision  # `models` for custom arch
   pretrained: false
 
 optimizer:
@@ -34,4 +35,4 @@ optimizer:
 scheduler:
   name: CosineAnnealingLR
   parameters:  # passed as **kwargs
-    T_max: 1955  # default train loader has 391 steps
+    T_max: 782  # default train loader has 391 steps
