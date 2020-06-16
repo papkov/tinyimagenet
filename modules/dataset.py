@@ -1,25 +1,27 @@
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, List, Optional, Sequence, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
+import hydra
+import numpy as np
 import pandas as pd
+import torch
+from omegaconf import DictConfig
 from pandas import DataFrame
 from PIL import Image
-import numpy as np
-
-import torch
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data.dataset import Dataset
-from torchvision import transforms
 
-from omegaconf import DictConfig
-import hydra
-
-Transform = Callable[[Image.Image], Image.Image]
+from pytorch_typing import Transform
 
 
-def get_labels_mapping(cfg):
+def get_labels_mapping(cfg: DictConfig) -> Tuple[Dict[Any, int], Dict[str, Any]]:
+    """
+    Provides label mapping from the validation dataset
+    :param cfg: config file in omegaconf format from hydra
+    :return: tuple(folders_to_num, val_labels)
+    """
     try:
         data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
     except AttributeError:
@@ -34,7 +36,11 @@ def get_labels_mapping(cfg):
     folders_to_num = {val: index for index, val in enumerate(all_folders)}
 
     val_labels = pd.read_csv(
-        data_root / cfg.data.val / cfg.data.val_labels, sep="\t", header=None, index_col=0)[1].to_dict()
+        data_root / cfg.data.val / cfg.data.val_labels,
+        sep="\t",
+        header=None,
+        index_col=0,
+    )[1].to_dict()
 
     return folders_to_num, val_labels
 
@@ -73,7 +79,15 @@ class TinyImagenetDataset(Dataset):
     _root: Path
     _df: DataFrame
 
-    def __init__(self, path, cfg: DictConfig, transform: Optional[Transform] = None):
+    def __init__(
+        self, path: str, cfg: DictConfig, transform: Optional[Transform] = None
+    ) -> None:
+        """
+        PyTorch Dataset for TinyImagenet competition
+        :param path: data root path
+        :param cfg: config file in omegaconf format from hydra
+        :param transform: optional albumentation transform
+        """
         self._transform = transform
         folders_to_num, val_labels = get_labels_mapping(cfg)
 
@@ -98,7 +112,7 @@ class TinyImagenetDataset(Dataset):
         path, label = self._df.loc[index, :]
         image = np.array(Image.open(path).convert("RGB"))
         if self._transform:
-            image = self._transform(image=image)['image']
+            image = self._transform(image=image)["image"]  # type: ignore
         return DatasetItem(image=image, label=label, id=index, path=path)
 
     def __len__(self) -> int:

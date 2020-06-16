@@ -15,9 +15,9 @@ results:
     name: model
 
 train:
-  epochs: 2
+  epochs: 100
   batch_size: 256
-  num_workers: 2
+  num_workers: 4
   monitor: val_acc
 
 model:
@@ -35,4 +35,4 @@ optimizer:
 scheduler:
   name: CosineAnnealingLR
   parameters:  # passed as **kwargs
-    T_max: 782  # default train loader has 391 steps
+    T_max: 39100  # default train loader has 391 steps

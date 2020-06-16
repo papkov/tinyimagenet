@@ -4,9 +4,9 @@ future==0.18.2
 jupyterlab==2.1.4
 pandas==1.0.4
 scikit-learn==0.23.1
-tensorboard==2.1.1
-torch==1.5.0
-torchvision==0.6.0
+tensorboard==1.14.0
+torch==1.2.0
+torchvision==0.4.0
 tqdm==4.46.1
 hydra-core==0.11.3
 flake8==3.8.3
