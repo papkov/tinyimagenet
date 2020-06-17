@@ -71,11 +71,16 @@ class ResidualUnit(nn.Module):
             nn.BatchNorm2d(in_channels),
             activation(),
             nn.Conv2d(
-                in_channels, out_channels, 3, stride=2 if downsample else 1, padding=1
+                in_channels,
+                out_channels,
+                3,
+                stride=2 if downsample else 1,
+                padding=1,
+                bias=False,
             ),
             nn.BatchNorm2d(out_channels),
             activation(),
-            nn.Conv2d(out_channels, out_channels, 3, stride=1, padding=1),
+            nn.Conv2d(out_channels, out_channels, 3, stride=1, padding=1, bias=False),
         )
 
     def forward(self, x: Tensor) -> Tensor:
@@ -115,7 +120,11 @@ class ResidualBlock(nn.Module):
 
 class ResidualNetwork(nn.Module):
     def __init__(
-        self, num_units: int = 3, n_classes: int = 2, in_channels: int = 3,
+        self,
+        num_units: int = 2,
+        n_classes: int = 2,
+        in_channels: int = 3,
+        base_channels: int = 16,
     ):
         """
         ResNet v2
@@ -129,25 +138,40 @@ class ResidualNetwork(nn.Module):
         self.network = nn.Sequential(
             nn.Conv2d(
                 in_channels=in_channels,
-                out_channels=16,
+                out_channels=base_channels,
                 kernel_size=3,
                 stride=1,
                 padding=1,
             ),
             ResidualBlock(
-                in_channels=16, out_channels=16, num_units=num_units, downsample=False
+                in_channels=base_channels,
+                out_channels=base_channels,
+                num_units=num_units,
+                downsample=False,
             ),
             ResidualBlock(
-                in_channels=16, out_channels=32, num_units=num_units, downsample=True
+                in_channels=base_channels,
+                out_channels=base_channels * 2,
+                num_units=num_units,
+                downsample=True,
             ),
             ResidualBlock(
-                in_channels=32, out_channels=64, num_units=num_units, downsample=True
+                in_channels=base_channels * 2,
+                out_channels=base_channels * 4,
+                num_units=num_units,
+                downsample=True,
             ),
-            nn.BatchNorm2d(64),
+            ResidualBlock(
+                in_channels=base_channels * 4,
+                out_channels=base_channels * 8,
+                num_units=num_units,
+                downsample=True,
+            ),
+            nn.BatchNorm2d(base_channels * 8),
             nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
         )
-        self.fc = nn.Linear(64, n_classes)
+        self.fc = nn.Linear(base_channels * 8, n_classes, bias=True)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -161,6 +185,16 @@ class ResidualNetwork(nn.Module):
         return self.fc(x)
 
 
+def resnet10(n_classes: int, **kwargs: Any) -> nn.Module:
+    """
+    ResNet-10 v2
+    :param n_classes: number of classes for the last dense layer
+    :param kwargs: keyword arguments for ResidualNetwork
+    :return: ResidualNetwork
+    """
+    return ResidualNetwork(num_units=1, base_channels=64, n_classes=n_classes, **kwargs)
+
+
 def resnet18(n_classes: int, **kwargs: Any) -> nn.Module:
     """
     ResNet-18 v2
@@ -168,4 +202,4 @@ def resnet18(n_classes: int, **kwargs: Any) -> nn.Module:
     :param kwargs: keyword arguments for ResidualNetwork
     :return: ResidualNetwork
     """
-    return ResidualNetwork(n_classes=n_classes, **kwargs)
+    return ResidualNetwork(num_units=2, base_channels=64, n_classes=n_classes, **kwargs)

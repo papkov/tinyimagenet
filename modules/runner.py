@@ -203,7 +203,7 @@ def train(
     # Log in file and tensorboard
     acc = 100.0 * meter_corr.sum / len(loader.dataset)
     log.info(
-        "Train Epoch: {} [ ({:.0f}%)]\tLoss: {:.6f}".format(epoch, acc, loss.item())
+        "Train Epoch: {} [ ({:.0f}%)]\tLoss: {:.6f}".format(epoch, acc, meter_loss.avg)
     )
     if writer is not None:
         writer.add_scalar("train_loss", loss.item(), global_step=epoch)
@@ -246,7 +246,7 @@ def test(
             correct += pred.eq(target.view_as(pred)).sum().item()
             outputs.append(output.detach().cpu().numpy())
 
-    test_loss /= len(loader.dataset)
+    test_loss /= len(loader)
     acc = 100.0 * correct / len(loader.dataset)
     log.info(
         "Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)".format(

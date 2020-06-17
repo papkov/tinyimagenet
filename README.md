@@ -1,7 +1,13 @@
 # Image Classifier for Tiny ImageNet
 
 ## Project structure
-
+| Local directory | Description | 
+|:--------------- |:----------- |
+| `data/` | Data | 
+| `modules/` | Python modules | 
+| `config/` | Configuration files | 
+| `notebooks/` | Jupyter notebooks |
+| `results/` | Logs and results | 
 
 ## Data
 The dataset resides in `/project/data` by default. If you do not have it downloaded, run the following commands.

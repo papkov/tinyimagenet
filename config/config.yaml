@@ -15,14 +15,14 @@ results:
     name: model
 
 train:
-  epochs: 100
-  batch_size: 256
+  epochs: 30
+  batch_size: 128
   num_workers: 4
   monitor: val_acc
 
 model:
   arch: resnet18
-  module: torchvision  # `models` for custom arch
+  module: models  # `models` for custom arch
   pretrained: false
 
 optimizer:
@@ -30,9 +30,9 @@ optimizer:
   parameters:  # passed as **kwargs
     lr: 0.1
     momentum: 0.9
-    weight_decay: 1e-8
+    weight_decay: 1e-5
 
 scheduler:
   name: CosineAnnealingLR
   parameters:  # passed as **kwargs
-    T_max: 39100  # default train loader has 391 steps
+    T_max: 23460  # default train loader has 782 steps

@@ -13,7 +13,9 @@ def to_tensor_normalize() -> Transform:
     """
     base_transform = albu.Compose(
         [
-            albu.Normalize([0.4802, 0.4481, 0.3975], [0.2302, 0.2265, 0.2262]),
+            albu.Normalize(
+                [0.4802, 0.4481, 0.3975], [0.2302, 0.2265, 0.2262], max_pixel_value=255
+            ),
             albu_pytorch.ToTensorV2(),
         ]
     )
