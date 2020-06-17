@@ -27,9 +27,10 @@ def evaluate_model(
     logging.basicConfig(
         filename=results_root / f"{data_part}.log", level=logging.NOTSET
     )
-    # Setup logging and show config (hydra takes care of naming)
+    # Setup logging and show config ьфлу
     log = logging.getLogger(__name__)
-    log.addHandler(logging.StreamHandler())
+    if not log.handlers:
+        log.addHandler(logging.StreamHandler())
 
     cfg_path = results_root / ".hydra/config.yaml"
     log.info(f"Read config from {cfg_path}")
@@ -99,6 +100,7 @@ def evaluate_model(
     )
     log.info(f"Loss {test_loss}, acc {test_acc}")
     log.info(f"Outputs:\n{test_outputs.shape}\n{test_outputs[:5, :5]}")
+    logging.shutdown()
     return test_loss, test_acc, test_outputs
 
 

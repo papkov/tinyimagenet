@@ -10,5 +10,5 @@ torchvision==0.4.0
 tqdm==4.46.1
 hydra-core==0.11.3
 flake8==3.8.3
-numpy==1.18.5
+numpy==1.18.4
 seaborn==0.10.1
