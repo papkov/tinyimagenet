@@ -151,9 +151,9 @@ def train(
     optimizer: Optimizer,
     loss_function: Criterion,
     epoch: int,
-    writer: SummaryWriter,
     log: Logger,
-    scheduler: Optional[Union[Scheduler, None]] = None,
+    writer: Optional[SummaryWriter] = None,
+    scheduler: Optional[Scheduler] = None,
 ) -> Tuple[float, float]:
     """
     Training loop
@@ -205,8 +205,9 @@ def train(
     log.info(
         "Train Epoch: {} [ ({:.0f}%)]\tLoss: {:.6f}".format(epoch, acc, loss.item())
     )
-    writer.add_scalar("train_loss", loss.item(), global_step=epoch)
-    writer.add_scalar("train_accuracy", acc, global_step=epoch)
+    if writer is not None:
+        writer.add_scalar("train_loss", loss.item(), global_step=epoch)
+        writer.add_scalar("train_acc", acc, global_step=epoch)
 
     return meter_loss.avg, acc
 
@@ -217,9 +218,9 @@ def test(
     loader: DataLoader,
     loss_function: Criterion,
     epoch: int,
-    writer: SummaryWriter,
     log: Logger,
-) -> Tuple[float, float]:
+    writer: Optional[SummaryWriter] = None,
+) -> Tuple[float, float, np.ndarray]:
     """
     Test loop
     :param model: PyTorch model to test
@@ -229,12 +230,13 @@ def test(
     :param epoch: epoch id
     :param writer: tensorboard SummaryWriter
     :param log: Logger
-    :return: tuple(test loss, test accuracy)
+    :return: tuple(test loss, test accuracy, outputs)
     """
     model.eval()
     model.to(device)
     test_loss = 0.0
     correct = 0
+    outputs = []
     with torch.no_grad():
         for idx, batch_data in enumerate(tqdm(loader, desc=f"test epoch {epoch:03d}")):
             data, target = batch_data.images.to(device), batch_data.labels.to(device)
@@ -242,6 +244,7 @@ def test(
             test_loss += loss_function(output, target).sum().item()
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
+            outputs.append(output.detach().cpu().numpy())
 
     test_loss /= len(loader.dataset)
     acc = 100.0 * correct / len(loader.dataset)
@@ -250,12 +253,11 @@ def test(
             test_loss, correct, len(loader.dataset), acc,
         )
     )
-    writer.add_scalar("test_loss", test_loss, global_step=epoch)
-    writer.add_scalar(
-        "test_accuracy", acc, global_step=epoch,
-    )
+    if writer is not None:
+        writer.add_scalar("test_loss", test_loss, global_step=epoch)
+        writer.add_scalar("test_acc", acc, global_step=epoch)
 
-    return test_loss, acc
+    return test_loss, acc, np.concatenate(outputs)
 
 
 @dataclass()
@@ -295,17 +297,17 @@ class Meter:
 
     def add(self, value: Union[int, float]) -> None:
         """
-        Add a value in history and check extremums
+        Add a value in history and check extrema
         :param value: monitored value
         :return:
         """
         self.last = value
         self.extremum = ""
 
-        if value < self.min:
+        if self.monitor_min and value < self.min:
             self.min = value
             self.extremum = "min"
-        if value > self.max:
+        elif not self.monitor_min and value > self.max:
             self.max = value
             self.extremum = "max"
 
@@ -405,18 +407,18 @@ class Runner:
                     self.optimizer,
                     self.loss_function,
                     epoch,
-                    writer,
                     self.log,
+                    writer,
                     self.scheduler,
                 )
-                val_loss, val_acc = test(
+                val_loss, val_acc, val_outputs = test(
                     self.model,
                     self.device,
                     self.test_loader,
                     self.loss_function,
                     epoch,
-                    writer,
                     self.log,
+                    writer,
                 )
                 # Meters
                 meters["train_loss"].add(train_loss)
@@ -425,7 +427,7 @@ class Runner:
                 meters["val_acc"].add(val_acc)
 
                 # Checkpoint
-                if meters[self.cfg.train.monitor].is_best:
+                if meters[self.cfg.train.monitor].is_best():
                     self.log.info(f"Save the best model to {checkpoint_path}")
                     torch.save(self.model.state_dict(), checkpoint_path)
 

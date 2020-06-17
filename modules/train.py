@@ -5,11 +5,11 @@ from pathlib import Path
 import albumentations as albu
 import hydra
 import torch
-from albumentations import pytorch as albu_pytorch
 from omegaconf import DictConfig
 
 from dataset import DatasetItem, TinyImagenetDataset
 from runner import Runner
+from transform import load_albu_transform, to_tensor_normalize
 
 
 @hydra.main(config_path="../config/config.yaml")
@@ -47,17 +47,11 @@ def main(cfg: DictConfig) -> None:
 
     # Training
     # Augmentations
-    base_transform = albu.Compose(
-        [
-            albu.Normalize([0.4802, 0.4481, 0.3975], [0.2302, 0.2265, 0.2262]),
-            albu_pytorch.ToTensorV2(),
-        ]
-    )
+    base_transform = to_tensor_normalize()
     if "augmentation" in cfg:
-        albu_transform = albu.load(
-            hydra.utils.to_absolute_path(cfg.augmentation.root), data_format="yaml"
-        )
-        log.info(f"Loaded transforms from to {str(cfg.augmentation.root)}")
+        augmentation_root = hydra.utils.to_absolute_path(cfg.augmentation.root)
+        albu_transform = load_albu_transform(augmentation_root)
+        log.info(f"Loaded transforms from {augmentation_root}")
         log.debug(albu_transform)
         transform = albu.Compose([albu_transform, base_transform])
     else:
@@ -80,22 +74,22 @@ def main(cfg: DictConfig) -> None:
         f"num workers {cfg.train.num_workers}"
     )
 
-    test_dataset = TinyImagenetDataset(val_path, cfg, base_transform)
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset,
+    valid_dataset = TinyImagenetDataset(val_path, cfg, base_transform)
+    valid_loader = torch.utils.data.DataLoader(
+        valid_dataset,
         batch_size=cfg.train.batch_size,
         shuffle=False,
         collate_fn=DatasetItem.collate,
         num_workers=cfg.train.num_workers,
     )
     log.info(
-        f"Created validation dataset ({len(test_dataset)}) "
-        f"and loader ({len(test_loader)}): "
+        f"Created validation dataset ({len(valid_dataset)}) "
+        f"and loader ({len(valid_loader)}): "
         f"batch size {cfg.train.batch_size}, "
         f"num workers {cfg.train.num_workers}"
     )
 
-    runner = Runner(cfg, log, train_loader, test_loader)
+    runner = Runner(cfg, log, train_loader, valid_loader)
     runner.fit()
 
 

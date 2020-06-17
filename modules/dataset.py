@@ -80,7 +80,10 @@ class TinyImagenetDataset(Dataset):
     _df: DataFrame
 
     def __init__(
-        self, path: str, cfg: DictConfig, transform: Optional[Transform] = None
+        self,
+        path: Union[str, Path],
+        cfg: DictConfig,
+        transform: Optional[Transform] = None,
     ) -> None:
         """
         PyTorch Dataset for TinyImagenet competition

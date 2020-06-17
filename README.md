@@ -13,3 +13,28 @@ wget http://cs231n.stanford.edu/tiny-imagenet-200.zip -O $DATA_PATH/tiny-imagene
 [ ! -d $DATA_PATH/tiny-imagenet-200 ] && unzip $DATA_PATH/tiny-imagenet-200.zip -d $DATA_PATH
 rm $DATA_PATH/tiny-imagenet-200.zip
 ```
+
+## Config
+Training is orchestrated by `hydra` config. It saves each run with the respective config
+in a separate folder in `results/model/datetime`. You can manipulate configs either from file before running `make train`
+or by substituting parameters. See [hydra docs](hydra.cc) and the following section for details. 
+
+## Training
+Training parameters are specified in `config/config.yaml` or by substitution. For example, we can train 
+`torchvision` version of ResNet18 and the custom one using the following two commands respectively:
+```
+python modules/train.py model.module=torchvision model.arch=resnet18
+python modules/train.py model.module=models model.arch=resnet18
+``` 
+`make train` from local machine will invoke `python modules/train.py` with default parameters.
+
+## Evaluation
+Provide the path to results folder which you want to evaluate. 
+`evaluate.py` will build the model by hydra config in the folder and write logs. Call `-h` to see other parameters.
+```
+python modules/evaluate.py -r results/models.resnet18/2020-06-17_10-30-50 -p val 
+```
+
+## Augmentation
+We use `albumentations` serialization to store augmentation parameters. See details [here](https://github.com/albumentations-team/albumentations_examples/blob/master/notebooks/serialization.ipynb).
+Default set of augmentations is in `config/augmentation/default.yaml` include random crop, rotation, scale, contrast, gamma. 
