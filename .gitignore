@@ -1,4 +1,4 @@
-# Neuro Template:
+/results/*
 /data/**/*
 /config/*.txt
 /config/*.conf
