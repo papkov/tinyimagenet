@@ -32,7 +32,6 @@ Training parameters are specified in `config/config.yaml` or by substitution. Fo
 python modules/train.py model.module=torchvision model.arch=resnet18
 python modules/train.py model.module=models model.arch=resnet18
 ``` 
-`make train` from local machine will invoke `python modules/train.py` with default parameters.
 
 ## Evaluation
 Provide the path to results folder which you want to evaluate. 
