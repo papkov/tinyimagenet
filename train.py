@@ -12,7 +12,7 @@ from modules.runner import Runner
 from modules.transform import load_albu_transform, to_tensor_normalize
 
 
-@hydra.main(config_path="config/config.yaml")
+@hydra.main(config_path="config", config_name="config.yaml")
 def main(cfg: DictConfig) -> None:
     """
     The main training function
