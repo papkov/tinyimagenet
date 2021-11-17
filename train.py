@@ -24,6 +24,9 @@ def main(cfg: DictConfig) -> None:
     log = logging.getLogger(__name__)
     log.debug(f"Config:\n{OmegaConf.to_yaml(cfg)}")
 
+    # Fix multiprocessing bug
+    torch.multiprocessing.set_sharing_strategy("file_system")
+
     # Data
     # Specify data paths from config
     data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
