@@ -9,7 +9,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from modules.dataset import DatasetItem, TinyImagenetDataset
 from modules.runner import Runner
-from modules.transform import load_albu_transform, to_tensor_normalize
+from modules.transform import to_tensor_normalize
 
 
 @hydra.main(config_path="config", config_name="config.yaml")
@@ -50,7 +50,7 @@ def main(cfg: DictConfig) -> None:
     base_transform = to_tensor_normalize()
     if "augmentation" in cfg:
         augmentation_root = hydra.utils.to_absolute_path(cfg.augmentation.root)
-        albu_transform = load_albu_transform(augmentation_root)
+        albu_transform = albu.load(augmentation_root, data_format="yaml")
         log.info(f"Loaded transforms from {augmentation_root}")
         log.debug(albu_transform)
         transform = albu.Compose([albu_transform, base_transform])

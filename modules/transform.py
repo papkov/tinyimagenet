@@ -20,13 +20,3 @@ def to_tensor_normalize() -> Transform:
         ]
     )
     return base_transform
-
-
-def load_albu_transform(path: Union[str, Path], data_format: str = "yaml") -> Transform:
-    """
-    :param path: path to augmentation config
-    :param data_format: config format
-    :return: Albumentations transform
-    """
-    albu_transform = load(path, data_format=data_format)
-    return albu_transform
