@@ -5,7 +5,7 @@ from pathlib import Path
 import albumentations as albu
 import hydra
 import torch
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from modules.dataset import DatasetItem, TinyImagenetDataset
 from modules.runner import Runner
@@ -21,7 +21,7 @@ def main(cfg: DictConfig) -> None:
     """
     # Setup logging and show config (hydra takes care of naming)
     log = logging.getLogger(__name__)
-    log.debug(f"Config:\n{cfg.pretty()}")
+    log.debug(f"Config:\n{OmegaConf.to_yaml(cfg)}")
 
     # Data
     # Specify data paths from config
