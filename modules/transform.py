@@ -1,7 +1,4 @@
-from pathlib import Path
-from typing import Union
-
-from albumentations import Normalize, load, Compose
+from albumentations import Normalize, Compose
 from albumentations.pytorch.transforms import ToTensorV2
 
 from modules.pytorch_typing import Transform
@@ -20,13 +17,3 @@ def to_tensor_normalize() -> Transform:
         ]
     )
     return base_transform
-
-
-def load_albu_transform(path: Union[str, Path], data_format: str = "yaml") -> Transform:
-    """
-    :param path: path to augmentation config
-    :param data_format: config format
-    :return: Albumentations transform
-    """
-    albu_transform = load(path, data_format=data_format)
-    return albu_transform
