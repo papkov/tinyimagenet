@@ -23,20 +23,20 @@ def get_labels_mapping(cfg: DictConfig) -> Tuple[Dict[Any, int], Dict[str, Any]]
     :return: tuple(folders_to_num, val_labels)
     """
     try:
-        data_root = Path(hydra.utils.to_absolute_path(cfg.data.root))
+        data_root = Path(hydra.utils.to_absolute_path(cfg.root))
     except AttributeError:
         # Handle standalone run
-        data_root = Path(cfg.data.root)
+        data_root = Path(cfg.root)
     all_folders = [
         dir_name
-        for r, d, f in os.walk(data_root / cfg.data.train)
+        for r, d, f in os.walk(data_root / cfg.train)
         for dir_name in d
         if dir_name != "images"
     ]
     folders_to_num = {val: index for index, val in enumerate(all_folders)}
 
     val_labels = pd.read_csv(
-        data_root / cfg.data.val / cfg.data.val_labels,
+        data_root / cfg.val / cfg.val_labels,
         sep="\t",
         header=None,
         index_col=0,

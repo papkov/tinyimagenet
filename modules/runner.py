@@ -107,7 +107,7 @@ def torch_optimizer(
 
 
 def torch_scheduler(
-    name: str, optimizer: DataLoader, log: Logger, **kwargs: Any
+    name: str, optimizer: Optimizer, log: Logger, **kwargs: Any
 ) -> Union[None, Scheduler]:
     """
     PyTorch Scheduler retriever,

@@ -59,7 +59,7 @@ def main(cfg: DictConfig) -> None:
         transform = base_transform
 
     # Dataset
-    train_dataset = TinyImagenetDataset(train_path, cfg, transform)
+    train_dataset = TinyImagenetDataset(train_path, cfg.data, transform)
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=cfg.train.batch_size,
@@ -74,7 +74,7 @@ def main(cfg: DictConfig) -> None:
         f"num workers {cfg.train.num_workers}"
     )
 
-    valid_dataset = TinyImagenetDataset(val_path, cfg, base_transform)
+    valid_dataset = TinyImagenetDataset(val_path, cfg.data, base_transform)
     valid_loader = torch.utils.data.DataLoader(
         valid_dataset,
         batch_size=cfg.train.batch_size,
