@@ -33,8 +33,3 @@ optimizer:
     lr: 0.1
     momentum: 0.9
     weight_decay: 1e-5
-
-scheduler:
-  name: CosineAnnealingLR
-  parameters:  # passed as **kwargs
-    T_max: 23460  # default train loader has 782 steps

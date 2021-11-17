@@ -382,7 +382,9 @@ class Runner:
                 self.cfg.scheduler.name, self.optimizer, self.log, **parameters
             )
         if self.scheduler is None:
-            self.log.info("Scheduler not specified. Proceed without")
+            T_max = self.cfg.train.epochs * len(self.train_loader)
+            self.log.info(f"Scheduler not specified. Use default CosineScheduler with T_max={T_max}")
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=T_max)
 
         # Set loss function
         self.loss_function = loss.CrossEntropyLoss()
