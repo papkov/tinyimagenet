@@ -13,7 +13,7 @@ from omegaconf import DictConfig
 from torch.nn.modules import loss
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from modules import models
 from modules.pytorch_typing import Criterion, Device, Model, Optimizer, Parameters, Scheduler
