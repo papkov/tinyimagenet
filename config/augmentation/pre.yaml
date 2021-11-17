@@ -1,0 +1,11 @@
+__version__: 1.1.0
+transform:
+  __class_fullname__: albumentations.core.composition.Compose
+  additional_targets: {}
+  bbox_params: null
+  keypoint_params: null
+  p: 1.0
+  transforms:
+  - __class_fullname__: albumentations.core.transforms_interface.NoOp
+    always_apply: true
+    p: 1

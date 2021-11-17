@@ -5,6 +5,7 @@ from pathlib import Path
 import albumentations as albu
 import hydra
 import torch
+from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
 
 from modules.dataset import DatasetItem, TinyImagenetDataset
@@ -47,20 +48,27 @@ def main(cfg: DictConfig) -> None:
 
     # Training
     # Augmentations
-    base_transform = to_tensor_normalize()
+    post_transform = to_tensor_normalize()
     if "augmentation" in cfg:
-        augmentation_root = hydra.utils.to_absolute_path(cfg.augmentation.root)
-        albu_transform = albu.load(augmentation_root, data_format="yaml")
-        log.info(f"Loaded transforms from {augmentation_root}")
-        log.debug(albu_transform)
-        transform = albu.Compose([albu_transform, base_transform])
+        pre_transform = albu.load(hydra.utils.to_absolute_path(cfg.augmentation.pre), data_format="yaml")
+        main_transform = albu.load(hydra.utils.to_absolute_path(cfg.augmentation.main), data_format="yaml")
+        post_transform = albu.load(hydra.utils.to_absolute_path(cfg.augmentation.post), data_format="yaml")
+        log.info(f"Loaded transforms from:\n{OmegaConf.to_yaml(cfg.augmentation)}")
+
+        log.debug(pre_transform)
+        log.debug(main_transform)
+        log.debug(post_transform)
+
+        train_transform = albu.Compose([pre_transform, main_transform, post_transform])
+        valid_transform = albu.Compose([pre_transform, post_transform])
     else:
         log.info("Augmentations will not be applied")
-        transform = base_transform
+        train_transform = post_transform
+        valid_transform = post_transform
 
     # Dataset
-    train_dataset = TinyImagenetDataset(train_path, cfg.data, transform)
-    train_loader = torch.utils.data.DataLoader(
+    train_dataset = TinyImagenetDataset(train_path, cfg.data, train_transform)
+    train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.train.batch_size,
         shuffle=True,
@@ -74,8 +82,8 @@ def main(cfg: DictConfig) -> None:
         f"num workers {cfg.train.num_workers}"
     )
 
-    valid_dataset = TinyImagenetDataset(val_path, cfg.data, base_transform)
-    valid_loader = torch.utils.data.DataLoader(
+    valid_dataset = TinyImagenetDataset(val_path, cfg.data, valid_transform)
+    valid_loader = DataLoader(
         valid_dataset,
         batch_size=cfg.train.batch_size,
         shuffle=False,

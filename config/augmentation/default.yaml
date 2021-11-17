@@ -1,4 +1,4 @@
-__version__: 0.4.5
+__version__: 1.1.0
 transform:
   __class_fullname__: albumentations.core.composition.Compose
   additional_targets: {}
