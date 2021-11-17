@@ -21,7 +21,7 @@ def main(cfg: DictConfig) -> None:
     """
     # Setup logging and show config (hydra takes care of naming)
     log = logging.getLogger(__name__)
-    log.debug(f"Config:\n{OmegaConf.to_yaml(cfg)}")
+    print(f"Config:\n{OmegaConf.to_yaml(cfg)}")
 
     # Data
     # Specify data paths from config
