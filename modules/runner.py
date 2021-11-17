@@ -15,8 +15,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
-import models
-from pytorch_typing import Criterion, Device, Model, Optimizer, Parameters, Scheduler
+from modules import models
+from modules.pytorch_typing import Criterion, Device, Model, Optimizer, Parameters, Scheduler
 
 
 def torch_model(

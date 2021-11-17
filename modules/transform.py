@@ -4,7 +4,7 @@ from typing import Union
 import albumentations as albu
 from albumentations import pytorch as albu_pytorch
 
-from pytorch_typing import Transform
+from modules.pytorch_typing import Transform
 
 
 def to_tensor_normalize() -> Transform:

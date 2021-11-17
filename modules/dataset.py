@@ -13,7 +13,7 @@ from PIL import Image
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data.dataset import Dataset
 
-from pytorch_typing import Transform
+from modules.pytorch_typing import Transform
 
 
 def get_labels_mapping(cfg: DictConfig) -> Tuple[Dict[Any, int], Dict[str, Any]]:

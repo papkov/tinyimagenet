@@ -7,12 +7,12 @@ import hydra
 import torch
 from omegaconf import DictConfig
 
-from dataset import DatasetItem, TinyImagenetDataset
-from runner import Runner
-from transform import load_albu_transform, to_tensor_normalize
+from modules.dataset import DatasetItem, TinyImagenetDataset
+from modules.runner import Runner
+from modules.transform import load_albu_transform, to_tensor_normalize
 
 
-@hydra.main(config_path="../config/config.yaml")
+@hydra.main(config_path="config/config.yaml")
 def main(cfg: DictConfig) -> None:
     """
     The main training function

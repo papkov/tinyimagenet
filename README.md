@@ -8,6 +8,9 @@
 | `config/` | Configuration files | 
 | `notebooks/` | Jupyter notebooks |
 | `results/` | Logs and results | 
+| `tests/` | Minimalistic tests |  
+| `train.py` | Training script |
+| `evaluate.py` | Evaluation script |
 
 ## Data
 The dataset resides in `/project/data` by default. If you do not have it downloaded, run the following commands.
@@ -29,8 +32,8 @@ or by substituting parameters. See [hydra docs](hydra.cc) and the following sect
 Training parameters are specified in `config/config.yaml` or by substitution. For example, we can train 
 `torchvision` version of ResNet18 and the custom one using the following two commands respectively:
 ```
-python modules/train.py model.module=torchvision model.arch=resnet18
-python modules/train.py model.module=models model.arch=resnet18
+python train.py model.module=torchvision model.arch=resnet18
+python train.py model.module=models model.arch=resnet18
 ``` 
 `make train` from local machine will invoke `python modules/train.py` with default parameters.
 
@@ -38,7 +41,7 @@ python modules/train.py model.module=models model.arch=resnet18
 Provide the path to results folder which you want to evaluate. 
 `evaluate.py` will build the model by hydra config in the folder and write logs. Call `-h` to see other parameters.
 ```
-python modules/evaluate.py -r results/models.resnet18/2020-06-17_10-30-50 -p val 
+python evaluate.py -r results/models.resnet18/2020-06-17_10-30-50 -p val 
 ```
 
 ## Augmentation

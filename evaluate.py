@@ -8,9 +8,9 @@ import torch
 from omegaconf import OmegaConf
 from torch.nn.modules import loss
 
-from dataset import DatasetItem, TinyImagenetDataset
-from runner import test, torch_model
-from transform import to_tensor_normalize
+from modules.dataset import DatasetItem, TinyImagenetDataset
+from modules.runner import test, torch_model
+from modules.transform import to_tensor_normalize
 
 
 def evaluate_model(
