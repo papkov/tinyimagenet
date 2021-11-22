@@ -11,6 +11,7 @@ import torchvision
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch import nn
+from torch.cuda.amp import GradScaler, autocast
 from torch.nn.modules import loss
 from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader
@@ -51,6 +52,7 @@ def train(
     log: Logger,
     writer: Optional[SummaryWriter] = None,
     scheduler: Optional[Scheduler] = None,
+    scaler: Optional[GradScaler] = None,
 ) -> Tuple[float, float]:
     """
     Training loop
@@ -63,6 +65,7 @@ def train(
     :param writer: tensorboard SummaryWriter
     :param log: Logger
     :param scheduler: optional PyTorch Scheduler
+    :param scaler: optional gradient scaler
     :return: tuple(train loss, train accuracy)
     """
     model.train()
@@ -76,11 +79,19 @@ def train(
         data, target = batch_data.images.to(device), batch_data.labels.to(device)
         optimizer.zero_grad()
 
-        output = model(data)
+        if scaler is not None:
+            with autocast():
+                output = model(data)
+                loss = loss_function(output, target)
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+        else:
+            output = model(data)
+            loss = loss_function(output, target)
+            loss.backward()
+            optimizer.step()
 
-        loss = loss_function(output, target)
-        loss.backward()
-        optimizer.step()
         if scheduler is not None:
             scheduler.step()
 
@@ -109,6 +120,7 @@ def train(
     return meter_loss.avg, acc
 
 
+@torch.no_grad()
 def test(
     model: Model,
     device: Device,
@@ -117,6 +129,7 @@ def test(
     epoch: int,
     log: Logger,
     writer: Optional[SummaryWriter] = None,
+    scaler: Optional[GradScaler] = None,
 ) -> Tuple[float, float, np.ndarray]:
     """
     Test loop
@@ -127,6 +140,7 @@ def test(
     :param epoch: epoch id
     :param writer: tensorboard SummaryWriter
     :param log: Logger
+    :param scaler: optional gradient scaler
     :return: tuple(test loss, test accuracy, outputs)
     """
     model.eval()
@@ -137,8 +151,15 @@ def test(
     with torch.no_grad():
         for idx, batch_data in enumerate(tqdm(loader, desc=f"test epoch {epoch:03d}")):
             data, target = batch_data.images.to(device), batch_data.labels.to(device)
-            output = model(data)
-            test_loss += loss_function(output, target).sum().item()
+            if scaler is not None:
+                with autocast():
+                    output = model(data)
+                    loss = loss_function(output, target)
+            else:
+                output = model(data)
+                loss = loss_function(output, target)
+
+            test_loss += loss.sum().item()
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
             outputs.append(output.detach().cpu().numpy())
@@ -224,6 +245,8 @@ class Runner:
         # Set loss function
         self.loss_function = loss.CrossEntropyLoss()
 
+        self.scaler = torch.cuda.amp.GradScaler() if cfg.train.mixed_precision else None
+
     def fit(self) -> None:
         # Paths
         results_root = Path(os.getcwd())
@@ -235,12 +258,11 @@ class Runner:
         }
         writer = SummaryWriter(results_root / self.cfg.results.checkpoints.tag)
 
-        freeze_epochs = getattr(self.cfg, "freeze_epochs", 0)
         freeze_backbone(self.model)
-        self.log.info(f"Freezing backbone for {freeze_epochs} epochs")
+        self.log.info(f"Freezing backbone for {self.freeze_epochs} epochs")
         # Training loop
         for epoch in range(self.cfg.train.epochs):
-            if epoch == freeze_epochs:
+            if epoch == self.freeze_epochs:
                 self.log.info("Unfreezing backbone")
                 unfreeze_backbone(self.model)
             try:
@@ -254,6 +276,7 @@ class Runner:
                     self.log,
                     writer,
                     self.scheduler,
+                    self.scaler,
                 )
                 val_loss, val_acc, val_outputs = test(
                     self.model,
@@ -263,6 +286,7 @@ class Runner:
                     epoch,
                     self.log,
                     writer,
+                    self.scaler,
                 )
                 # Meters
                 meters["train_loss"].add(train_loss)

@@ -20,6 +20,8 @@ train:
   batch_size: 128
   num_workers: 4
   monitor: val_acc
+  warmup_epochs: 1
+  mixed_precision: true
 
 model:
   _target_: modules.models.resnet18
