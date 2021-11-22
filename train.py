@@ -22,7 +22,7 @@ def main(cfg: DictConfig) -> None:
     """
     # Setup logging and show config (hydra takes care of naming)
     log = logging.getLogger(__name__)
-    log.debug(f"Config:\n{OmegaConf.to_yaml(cfg)}")
+    log.info(f"Config:\n{OmegaConf.to_yaml(cfg)}")
 
     # Fix multiprocessing bug
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -76,6 +76,8 @@ def main(cfg: DictConfig) -> None:
         shuffle=True,
         collate_fn=DatasetItem.collate,
         num_workers=cfg.train.num_workers,
+        drop_last=True,
+        pin_memory=True,
     )
     log.info(
         f"Created training dataset ({len(train_dataset)}) "
@@ -91,6 +93,7 @@ def main(cfg: DictConfig) -> None:
         shuffle=False,
         collate_fn=DatasetItem.collate,
         num_workers=cfg.train.num_workers,
+        pin_memory=True,
     )
     log.info(
         f"Created validation dataset ({len(valid_dataset)}) "
