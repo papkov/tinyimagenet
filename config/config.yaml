@@ -1,6 +1,6 @@
 hydra:
   run:
-    dir: results/${model.module}.${model.arch}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: results/${model._target_}/${now:%Y-%m-%d_%H-%M-%S}
 
 defaults:
   - data: tinyimagenet
@@ -23,13 +23,10 @@ train:
   monitor: val_acc
 
 model:
-  arch: resnet18
-  module: models  # `models` for custom arch
-  pretrained: false
+  _target_: modules.models.resnet18
 
 optimizer:
-  name: SGD
-  parameters:  # passed as **kwargs
-    lr: 0.1
-    momentum: 0.9
-    weight_decay: 1e-5
+  _target_: torch.optim.SGD
+  lr: 0.1
+  momentum: 0.9
+  weight_decay: 1e-5
