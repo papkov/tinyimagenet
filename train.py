@@ -5,8 +5,8 @@ from pathlib import Path
 import albumentations as albu
 import hydra
 import torch
-from torch.utils.data import DataLoader
 from omegaconf import DictConfig, OmegaConf
+from torch.utils.data import DataLoader
 
 from modules.dataset import DatasetItem, TinyImagenetDataset
 from modules.runner import Runner
@@ -53,9 +53,15 @@ def main(cfg: DictConfig) -> None:
     # Augmentations
     post_transform = to_tensor_normalize()
     if "augmentation" in cfg:
-        pre_transform = albu.load(hydra.utils.to_absolute_path(cfg.augmentation.pre), data_format="yaml")
-        main_transform = albu.load(hydra.utils.to_absolute_path(cfg.augmentation.main), data_format="yaml")
-        post_transform = albu.load(hydra.utils.to_absolute_path(cfg.augmentation.post), data_format="yaml")
+        pre_transform = albu.load(
+            hydra.utils.to_absolute_path(cfg.augmentation.pre), data_format="yaml"
+        )
+        main_transform = albu.load(
+            hydra.utils.to_absolute_path(cfg.augmentation.main), data_format="yaml"
+        )
+        post_transform = albu.load(
+            hydra.utils.to_absolute_path(cfg.augmentation.post), data_format="yaml"
+        )
         log.info(f"Loaded transforms from:\n{OmegaConf.to_yaml(cfg.augmentation)}")
 
         log.debug(pre_transform)
