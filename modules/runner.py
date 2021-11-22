@@ -1,24 +1,44 @@
 import os
+from bisect import bisect_right
 from dataclasses import dataclass
 from logging import Logger
 from pathlib import Path
-from typing import Any, List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 import numpy as np
 import torch
-
-# from torchvision import prototype as P
+import torchvision
 from hydra.utils import instantiate
 from omegaconf import DictConfig
+from torch import nn
 from torch.nn.modules import loss
+from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+from torchvision.models import resnet
 from tqdm import tqdm
 
 import modules
-from modules import models
 from modules.meter import Meter
 from modules.pytorch_typing import *
+
+# Set the latest weights to be the default
+resnet.model_urls[
+    "resnet50"
+] = "https://download.pytorch.org/models/resnet50-f46c3f97.pth"
+
+
+def get_last_lr(scheduler: Scheduler) -> float:
+    """
+    Get last learning rate from all types of schedulers
+    (SequentialLR does not support get_last_lr)
+    :param scheduler:
+    :return: float, last learning rate
+    """
+    if isinstance(scheduler, SequentialLR):
+        idx = bisect_right(scheduler._milestones, scheduler.last_epoch)
+        return scheduler._schedulers[idx].get_last_lr()[0]
+    return scheduler.get_last_lr()[0]
 
 
 def train(
@@ -68,11 +88,12 @@ def train(
         # Display training status
         meter_loss.add(loss.item())
         meter_corr.add(pred.eq(target.view_as(pred)).sum().item())
+
         tqdm_loader.set_postfix(
             {
                 "loss": meter_loss.avg,
                 "acc": 100 * meter_corr.avg / loader.batch_size,
-                "lr": scheduler.get_lr(),
+                "lr": get_last_lr(scheduler),
             }
         )
 
@@ -165,7 +186,9 @@ class Runner:
         )
         self.log.info(f"Using device={self.device}")
 
-        self.model = instantiate(self.cfg.model, self.cfg.data.classes)
+        self.model = instantiate(self.cfg.model)
+        if getattr(self.cfg.model, "pretrained", False):
+            self.model.fc = nn.Linear(self.model.fc.in_features, self.cfg.data.classes)
         self.model = self.model.to(self.device)
         self.log.info(f"Model: {self.model}")
 
@@ -177,13 +200,25 @@ class Runner:
         if "scheduler" in self.cfg:
             self.scheduler = instantiate(self.cfg.scheduler, self.optimizer)
         if self.scheduler is None:
-            T_max = self.cfg.train.epochs * len(self.train_loader)
+            # TODO to config
+            warmup_epochs = 1
+            warmup_steps = len(self.train_loader) * warmup_epochs
+            annealing_steps = (self.cfg.train.epochs - warmup_epochs) * len(
+                self.train_loader
+            )
             self.log.info(
-                f"Scheduler not specified. Use default CosineScheduler with T_max={T_max}"
+                f"Scheduler not specified. Use default CosineScheduler with {warmup_epochs} warmup epochs ({warmup_steps} steps) T_max={annealing_steps}"
             )
-            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-                self.optimizer, T_max=T_max
+            scheduler_warmup = LinearLR(
+                self.optimizer, 1e-3, 1.0, total_iters=warmup_steps
             )
+            scheduler_cosine = CosineAnnealingLR(self.optimizer, T_max=annealing_steps)
+            self.scheduler = SequentialLR(
+                self.optimizer,
+                [scheduler_warmup, scheduler_cosine],
+                milestones=[warmup_steps],
+            )
+
         self.log.info(f"Scheduler: {self.scheduler}")
 
         # Set loss function
@@ -199,8 +234,15 @@ class Runner:
             m: Meter(m) for m in ["train_loss", "val_loss", "train_acc", "val_acc"]
         }
         writer = SummaryWriter(results_root / self.cfg.results.checkpoints.tag)
+
+        freeze_epochs = getattr(self.cfg, "freeze_epochs", 0)
+        freeze_backbone(self.model)
+        self.log.info(f"Freezing backbone for {freeze_epochs} epochs")
         # Training loop
         for epoch in range(self.cfg.train.epochs):
+            if epoch == freeze_epochs:
+                self.log.info("Unfreezing backbone")
+                unfreeze_backbone(self.model)
             try:
                 train_loss, train_acc = train(
                     self.model,
@@ -237,3 +279,14 @@ class Runner:
                 self.log.info("Training interrupted")
                 break
         writer.close()
+
+
+def freeze_backbone(model: nn.Module) -> None:
+    for name, param in model.named_parameters():
+        if "fc" not in name:
+            param.requires_grad = False
+
+
+def unfreeze_backbone(model: nn.Module) -> None:
+    for name, param in model.named_parameters():
+        param.requires_grad = True

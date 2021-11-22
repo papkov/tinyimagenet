@@ -185,7 +185,7 @@ class ResidualNetwork(nn.Module):
         return self.fc(x)
 
 
-def resnet10(n_classes: int, **kwargs: Any) -> nn.Module:
+def resnet10(n_classes: int = 200, **kwargs: Any) -> nn.Module:
     """
     ResNet-10 v2
     :param n_classes: number of classes for the last dense layer
@@ -195,7 +195,7 @@ def resnet10(n_classes: int, **kwargs: Any) -> nn.Module:
     return ResidualNetwork(num_units=1, base_channels=64, n_classes=n_classes, **kwargs)
 
 
-def resnet18(n_classes: int, **kwargs: Any) -> nn.Module:
+def resnet18(n_classes: int = 200, **kwargs: Any) -> nn.Module:
     """
     ResNet-18 v2
     :param n_classes: number of classes for the last dense layer
