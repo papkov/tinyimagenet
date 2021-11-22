@@ -1,0 +1,18 @@
+# @package _global_
+
+augmentation:
+  train: config/augmentation/pretrained_resnet/train.yaml
+  valid: config/augmentation/pretrained_resnet/valid.yaml
+
+train:
+  epochs: 30
+
+model:
+  _target_: torchvision.models.resnet.resnet50
+  pretrained: true
+
+optimizer:
+  _target_: torch.optim.SGD
+  weight_decay: 2e-5
+
+freeze_epochs: 5
