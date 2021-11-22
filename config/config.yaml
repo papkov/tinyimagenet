@@ -6,9 +6,8 @@ defaults:
   - data: tinyimagenet
 
 augmentation:
-  pre: config/augmentation/pre.yaml
-  main: config/augmentation/default.yaml
-  post: config/augmentation/post.yaml
+  train: config/augmentation/train.yaml
+  valid: config/augmentation/valid.yaml
 
 results:
   checkpoints:

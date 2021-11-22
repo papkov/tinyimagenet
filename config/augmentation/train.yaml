@@ -25,8 +25,8 @@ transform:
   - __class_fullname__: albumentations.augmentations.transforms.RandomCrop
     always_apply: false
     height: 56
-    p: 1.0
     width: 56
+    p: 1.0
   - __class_fullname__: albumentations.augmentations.transforms.RandomGamma
     always_apply: false
     eps: null
@@ -40,3 +40,12 @@ transform:
     - -0.2
     - 0.2
     p: 0.5
+  - __class_fullname__: albumentations.augmentations.transforms.Normalize
+    mean: [0.4802, 0.4481, 0.3975]  # Tiny Imagenet stats
+    std: [0.2302, 0.2265, 0.2262]
+    max_pixel_value: 255
+    always_apply: true
+    p: 1
+  - __class_fullname__: albumentations.pytorch.transforms.ToTensorV2
+    always_apply: true
+    p: 1
