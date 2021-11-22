@@ -7,6 +7,7 @@ augmentation:
 train:
   epochs: 30
   freeze_epochs: 2
+  warmup_epochs: 4
 
 resnet: 50
 
