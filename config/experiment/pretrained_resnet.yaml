@@ -6,13 +6,10 @@ augmentation:
 
 train:
   epochs: 30
+  freeze_epochs: 2
+
+resnet: 50
 
 model:
-  _target_: torchvision.models.resnet.resnet50
+  _target_: torchvision.models.resnet.resnet${resnet}
   pretrained: true
-
-optimizer:
-  _target_: torch.optim.SGD
-  weight_decay: 2e-5
-
-freeze_epochs: 5

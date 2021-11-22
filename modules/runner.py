@@ -13,7 +13,12 @@ from omegaconf import DictConfig
 from torch import nn
 from torch.cuda.amp import GradScaler, autocast
 from torch.nn.modules import loss
-from torch.optim.lr_scheduler import CosineAnnealingLR, LinearLR, SequentialLR
+from torch.optim.lr_scheduler import (
+    ConstantLR,
+    CosineAnnealingLR,
+    LinearLR,
+    SequentialLR,
+)
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torchvision.models import resnet
@@ -201,6 +206,9 @@ class Runner:
         self.train_loader = train_loader
         self.test_loader = test_loader
 
+        self.freeze_epochs = getattr(self.cfg.train, "freeze_epochs", 0)
+        self.warmup_epochs = getattr(self.cfg.train, "warmup_epochs", 0)
+
         # Set device
         self.device = (
             torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -221,24 +229,42 @@ class Runner:
         if "scheduler" in self.cfg:
             self.scheduler = instantiate(self.cfg.scheduler, self.optimizer)
         if self.scheduler is None:
-            # TODO to config
-            warmup_epochs = 1
-            warmup_steps = len(self.train_loader) * warmup_epochs
-            annealing_steps = (self.cfg.train.epochs - warmup_epochs) * len(
-                self.train_loader
-            )
+            warmup_steps = len(self.train_loader) * self.warmup_epochs
+            freeze_steps = len(self.train_loader) * self.freeze_epochs
+            annealing_steps = (
+                self.cfg.train.epochs - self.warmup_epochs - self.freeze_epochs
+            ) * len(self.train_loader)
+
             self.log.info(
-                f"Scheduler not specified. Use default CosineScheduler with {warmup_epochs} warmup epochs ({warmup_steps} steps) T_max={annealing_steps}"
+                f"Scheduler not specified. Use default CosineScheduler with {self.freeze_epochs} freeze epochs at constant LR, {self.warmup_epochs} warmup epochs at linear LR, T_max={annealing_steps}"
             )
-            scheduler_warmup = LinearLR(
-                self.optimizer, 1e-3, 1.0, total_iters=warmup_steps
-            )
-            scheduler_cosine = CosineAnnealingLR(self.optimizer, T_max=annealing_steps)
+
+            schedulers = []
+            milestones = []
+
+            if self.freeze_epochs > 0:
+                # Freeze warmup scheduler
+                schedulers.append(
+                    ConstantLR(self.optimizer, factor=1.0, total_iters=freeze_steps)
+                    # LinearLR(self.optimizer, 1e-2, 1.0, total_iters=freeze_steps)
+                )
+                milestones.append(freeze_steps)
+            if self.warmup_epochs > 0:
+                # Warmup scheduler
+                schedulers.append(
+                    LinearLR(self.optimizer, start_factor=1e-2, total_iters=warmup_steps)
+                )
+                milestones.append(freeze_steps + warmup_steps)
+
+            # Main scheduler
+            schedulers.append(CosineAnnealingLR(self.optimizer, T_max=annealing_steps))
             self.scheduler = SequentialLR(
-                self.optimizer,
-                [scheduler_warmup, scheduler_cosine],
-                milestones=[warmup_steps],
+                optimizer=self.optimizer,
+                schedulers=schedulers,
+                milestones=milestones,
+                verbose=True,
             )
+            self.log.info(f"Schedulers: {schedulers}, milestones: {milestones}")
 
         self.log.info(f"Scheduler: {self.scheduler}")
 
