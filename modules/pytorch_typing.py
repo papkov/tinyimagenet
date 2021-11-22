@@ -10,6 +10,7 @@ from torch import nn, optim
 from torch.nn.parameter import Parameter
 from torch.optim import lr_scheduler
 from torch.utils import data
+from torchvision.transforms import Compose
 
 Model = nn.Module
 Criterion = nn.Module
@@ -18,7 +19,9 @@ Scheduler = lr_scheduler._LRScheduler  # noinspection PyProtectedMember
 Dataset = data.Dataset
 Device = Union[str, torch.device]
 Parameters = Iterator[Parameter]
-Transform = Union[Callable[[Image.Image], Image.Image], Callable[..., Dict[str, Any]]]
+Transform = Union[
+    Compose, Callable[[Image.Image], Image.Image], Callable[..., Dict[str, Any]]
+]
 
 
 __all__ = [

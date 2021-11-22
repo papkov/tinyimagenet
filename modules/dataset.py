@@ -13,7 +13,7 @@ from PIL import Image
 from torch.utils.data.dataloader import default_collate
 from torch.utils.data.dataset import Dataset
 
-from modules.pytorch_typing import Transform
+from modules.pytorch_typing import Compose, Transform
 
 
 def get_labels_mapping(cfg: DictConfig) -> Tuple[Dict[Any, int], Dict[str, Any]]:
@@ -84,6 +84,7 @@ class TinyImagenetDataset(Dataset):
         path: Union[str, Path],
         cfg: DictConfig,
         transform: Optional[Transform] = None,
+        use_albumentations: bool = False,
     ) -> None:
         """
         PyTorch Dataset for TinyImagenet competition
@@ -92,6 +93,7 @@ class TinyImagenetDataset(Dataset):
         :param transform: optional albumentation transform
         """
         self._transform = transform
+        self.use_albumentations = use_albumentations
         folders_to_num, val_labels = get_labels_mapping(cfg)
 
         if not os.path.isdir(path):
@@ -113,9 +115,13 @@ class TinyImagenetDataset(Dataset):
 
     def __getitem__(self, index: int) -> DatasetItem:
         path, label = self._df.loc[index, :]
-        image = np.array(Image.open(path).convert("RGB"))
+        image = Image.open(path).convert("RGB")
         if self._transform:
-            image = self._transform(image=image)["image"]  # type: ignore
+            if self.use_albumentations:
+                image = self._transform(image=np.array(image, dtype=np.float32))["image"]  # type: ignore
+            else:
+                image = self._transform(image)
+
         return DatasetItem(image=image, label=label, id=index, path=path)
 
     def __len__(self) -> int:

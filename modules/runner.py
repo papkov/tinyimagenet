@@ -230,9 +230,9 @@ class Runner:
             self.scheduler = instantiate(self.cfg.scheduler, self.optimizer)
         if self.scheduler is None:
             warmup_steps = len(self.train_loader) * self.warmup_epochs
-            annealing_steps = (
-                self.cfg.train.epochs - self.warmup_epochs
-            ) * len(self.train_loader)
+            annealing_steps = (self.cfg.train.epochs - self.warmup_epochs) * len(
+                self.train_loader
+            )
 
             self.log.info(
                 f"Scheduler not specified. Use default CosineScheduler with {self.warmup_epochs} warmup epochs at linear LR, T_max={annealing_steps}"
@@ -244,7 +244,9 @@ class Runner:
             if self.warmup_epochs > 0:
                 # Warmup scheduler
                 schedulers.append(
-                    LinearLR(self.optimizer, start_factor=1e-2, total_iters=warmup_steps)
+                    LinearLR(
+                        self.optimizer, start_factor=1e-2, total_iters=warmup_steps
+                    )
                 )
                 milestones.append(warmup_steps)
 
