@@ -5,10 +5,6 @@ hydra:
 defaults:
   - data: tinyimagenet
 
-augmentation:
-  train: config/augmentation/train.yaml
-  valid: config/augmentation/valid.yaml
-
 results:
   checkpoints:
     root: checkpoints

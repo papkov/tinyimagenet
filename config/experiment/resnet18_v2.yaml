@@ -1,0 +1,10 @@
+# @package _global_
+experiment: resnet18_v2
+
+augmentation:
+  train: config/augmentation/train.yaml
+  valid: config/augmentation/valid.yaml
+
+
+model:
+  _target_: modules.models.resnet18

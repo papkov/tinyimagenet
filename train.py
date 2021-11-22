@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from pathlib import Path
 
 import albumentations as albu
@@ -10,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from modules.dataset import DatasetItem, TinyImagenetDataset
 from modules.runner import Runner
-from modules.transform import to_tensor_normalize
+from modules.transform import transforms_train_torchvision, transforms_valid_torchvision
 
 
 @hydra.main(config_path="config", config_name="config.yaml")
@@ -20,9 +21,17 @@ def main(cfg: DictConfig) -> None:
     :param cfg: hydra config passed through the decorator
     :return: None
     """
+
     # Setup logging and show config (hydra takes care of naming)
     log = logging.getLogger(__name__)
     log.info(f"Config:\n{OmegaConf.to_yaml(cfg)}")
+
+    if not hasattr(cfg, "experiment"):
+        print(
+            "Specify experiment as +experiment=experiment_name. "
+            "Check for available experiment configs in config/experiment"
+        )
+        sys.exit(0)
 
     # Fix multiprocessing bug
     torch.multiprocessing.set_sharing_strategy("file_system")
@@ -51,8 +60,7 @@ def main(cfg: DictConfig) -> None:
 
     # Training
     # Augmentations
-    post_transform = to_tensor_normalize()
-    if "augmentation" in cfg:
+    if hasattr(cfg, "augmentation"):
         train_transform = albu.load(
             hydra.utils.to_absolute_path(cfg.augmentation.train), data_format="yaml"
         )
@@ -64,12 +72,15 @@ def main(cfg: DictConfig) -> None:
         log.debug(train_transform)
         log.debug(valid_transform)
     else:
-        log.info("Augmentations will not be applied")
-        train_transform = post_transform
-        valid_transform = post_transform
+        log.info("Use TrivialAugment by default")
+        train_transform = transforms_train_torchvision()
+        valid_transform = transforms_valid_torchvision()
 
     # Dataset
-    train_dataset = TinyImagenetDataset(train_path, cfg.data, train_transform)
+    use_albumentations = hasattr(cfg, "augmentation")
+    train_dataset = TinyImagenetDataset(
+        train_path, cfg.data, train_transform, use_albumentations
+    )
     train_loader = DataLoader(
         train_dataset,
         batch_size=cfg.train.batch_size,
@@ -86,7 +97,9 @@ def main(cfg: DictConfig) -> None:
         f"num workers {cfg.train.num_workers}"
     )
 
-    valid_dataset = TinyImagenetDataset(val_path, cfg.data, valid_transform)
+    valid_dataset = TinyImagenetDataset(
+        val_path, cfg.data, valid_transform, use_albumentations
+    )
     valid_loader = DataLoader(
         valid_dataset,
         batch_size=cfg.train.batch_size,

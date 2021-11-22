@@ -1,8 +1,5 @@
 # @package _global_
-
-augmentation:
-  train: config/augmentation/pretrained_resnet/train.yaml
-  valid: config/augmentation/pretrained_resnet/valid.yaml
+experiment: pretrained_resnet
 
 train:
   epochs: 30
