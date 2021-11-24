@@ -39,7 +39,7 @@ def evaluate_model(
     log.info(f"Read config from {cfg_path}")
 
     cfg = OmegaConf.load(str(cfg_path))
-    log.debug(f"Config:\n{cfg.pretty()}")
+    log.info(f"Config:\n{OmegaConf.to_yaml(cfg)}")
 
     # Specify results paths from config
     checkpoint_path = results_root / cfg.results.checkpoints.root
@@ -69,7 +69,7 @@ def evaluate_model(
         )
         valid_transform = albu.Compose([pre_transform, post_transform])
 
-    test_dataset = TinyImagenetDataset(test_path, cfg, valid_transform)
+    test_dataset = TinyImagenetDataset(test_path, cfg.data, valid_transform)
     test_loader = DataLoader(
         test_dataset,
         batch_size=cfg.train.batch_size,
