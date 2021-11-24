@@ -165,7 +165,7 @@ class Runner:
         )
         self.log.info(f"Using device={self.device}")
 
-        self.model = instantiate(self.cfg.model, self.cfg.data.classes)
+        self.model = instantiate(self.cfg.model)
         self.model = self.model.to(self.device)
         self.log.info(f"Model: {self.model}")
 
