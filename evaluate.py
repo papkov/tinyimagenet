@@ -3,14 +3,18 @@ import logging
 from pathlib import Path
 from typing import Tuple, Union
 
+import albumentations as albu
 import numpy as np
 import torch
+from hydra.utils import instantiate, to_absolute_path
 from omegaconf import OmegaConf
 from torch.nn.modules import loss
+from torch import nn
+from torch.utils.data import DataLoader
 
 from modules.dataset import DatasetItem, TinyImagenetDataset
-from modules.runner import test, torch_model
-from modules.transform import to_tensor_normalize
+from modules.runner import test
+from modules.transform import transforms_valid_torchvision
 
 
 def evaluate_model(
@@ -36,11 +40,14 @@ def evaluate_model(
     log.info(f"Read config from {cfg_path}")
 
     cfg = OmegaConf.load(str(cfg_path))
-    log.debug(f"Config:\n{cfg.pretty()}")
+    log.info(f"Config:\n{OmegaConf.to_yaml(cfg)}")
 
     # Specify results paths from config
     checkpoint_path = results_root / cfg.results.checkpoints.root
     checkpoint_path /= f"{cfg.results.checkpoints.name}.pth"
+
+    # Fix multiprocessing bug
+    torch.multiprocessing.set_sharing_strategy("file_system")
 
     # Data
     # Specify data paths from config
@@ -56,8 +63,19 @@ def evaluate_model(
         )
         raise FileNotFoundError
 
-    base_transform = to_tensor_normalize()
-    test_dataset = TinyImagenetDataset(test_path, cfg, base_transform)
+    use_albumentations = hasattr(cfg, "augmentation")
+    if use_albumentations:
+        valid_transform = albu.load(
+            to_absolute_path(cfg.augmentation.valid), data_format="yaml"
+        )
+        log.info(f"Loaded transforms from:\n{OmegaConf.to_yaml(cfg.augmentation)}")
+        log.debug(valid_transform)
+    else:
+        valid_transform = transforms_valid_torchvision()
+
+    test_dataset = TinyImagenetDataset(
+        test_path, cfg.data, valid_transform, use_albumentations
+    )
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
         batch_size=cfg.train.batch_size,
@@ -74,13 +92,9 @@ def evaluate_model(
     )
 
     loss_function = loss.CrossEntropyLoss()
-    model = torch_model(
-        cfg.model.arch,
-        cfg.data.classes,
-        cfg.model.pretrained,
-        log,
-        module_name=cfg.model.module,
-    )
+    model = instantiate(cfg.model)
+    if getattr(cfg.model, "pretrained", False):
+        model.fc = nn.Linear(model.fc.in_features, cfg.data.classes)
     try:
         model.load_state_dict(torch.load(checkpoint_path, map_location="cpu"))
     except RuntimeError as e:

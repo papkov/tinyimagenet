@@ -60,7 +60,8 @@ def main(cfg: DictConfig) -> None:
 
     # Training
     # Augmentations
-    if hasattr(cfg, "augmentation"):
+    use_albumentations = hasattr(cfg, "augmentation")
+    if use_albumentations:
         train_transform = albu.load(
             hydra.utils.to_absolute_path(cfg.augmentation.train), data_format="yaml"
         )
@@ -77,7 +78,6 @@ def main(cfg: DictConfig) -> None:
         valid_transform = transforms_valid_torchvision()
 
     # Dataset
-    use_albumentations = hasattr(cfg, "augmentation")
     train_dataset = TinyImagenetDataset(
         train_path, cfg.data, train_transform, use_albumentations
     )
